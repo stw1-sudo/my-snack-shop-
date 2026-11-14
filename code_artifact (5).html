@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>我的小食店 - 數量比較篇</title>
+    <!-- 引入 Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Google Fonts: 圓體與童趣感字型 -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Noto+Sans+TC:wght@500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans TC', 'Fredoka', sans-serif;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+            background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%);
+            overflow-x: hidden;
+        }
+
+        /* 浮動雲朵動畫 */
+        @keyframes floatCloud {
+            0% { transform: translateX(-120px); }
+            100% { transform: translateX(calc(100vw + 120px)); }
+        }
+        .cloud-anim {
+            animation: floatCloud 28s linear infinite;
+        }
+
+        /* 卡通外框與彈跳陰影 */
+        .cartoon-box {
+            border: 4px solid #ffffff;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15), inset 0 2px 6px rgba(255, 255, 255, 0.8);
+            border-radius: 2.5rem;
+        }
+
+        .cartoon-btn {
+            border: 3px solid #ffffff;
+            box-shadow: 0 6px 0 rgba(0, 0, 0, 0.15);
+            transition: all 0.1s ease;
+        }
+        .cartoon-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 rgba(0, 0, 0, 0.15);
+        }
+
+        /* 盤子選項點擊與懸停跳動 */
+        @keyframes bouncePlate {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-6px) scale(1.03); }
+        }
+        .plate-hover:hover {
+            animation: bouncePlate 0.5s ease infinite;
+        }
+
+        /* 彈出動畫 */
+        @keyframes popIn {
+            0% { transform: scale(0); opacity: 0; }
+            70% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .pop-in {
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        /* 抖動動畫 (答錯時) */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-8px); }
+            40%, 80% { transform: translateX(8px); }
+        }
+        .shake-anim {
+            animation: shake 0.4s ease-in-out;
+        }
+
+        /* 自定義捲軸 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #93c5fd;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-between p-3 sm:p-6 relative select-none">
+
+    <!-- 背景裝飾雲朵 -->
+    <div class="absolute top-8 left-[-120px] opacity-70 cloud-anim pointer-events-none z-0">
+        <svg width="120" height="60" viewBox="0 0 120 60" fill="white">
+            <path d="M20 40h80a20 20 0 0 0 0-40 25 25 0 0 0-45-5 20 20 0 0 0-35 15 20 20 0 0 0 0 30z"></path>
+        </svg>
+    </div>
+    <div class="absolute top-24 left-[-160px] opacity-60 cloud-anim pointer-events-none z-0" style="animation-delay: 14s;">
+        <svg width="90" height="45" viewBox="0 0 120 60" fill="white">
+            <path d="M20 40h80a20 20 0 0 0 0-40 25 25 0 0 0-45-5 20 20 0 0 0-35 15 20 20 0 0 0 0 30z"></path>
+        </svg>
+    </div>
+
+    <!-- 主遊戲容器 -->
+    <div id="game-container" class="w-full max-w-md bg-white/95 backdrop-blur-md cartoon-box flex flex-col relative z-10 overflow-hidden min-h-[620px] sm:min-h-[700px]">
+
+        <!-- 頂部狀態列 -->
+        <header id="top-bar" class="hidden bg-gradient-to-r from-sky-400 to-indigo-500 p-3 sm:p-4 border-b-4 border-white flex justify-between items-center text-white font-bold text-lg sm:text-xl shadow-sm">
+            <div class="flex items-center gap-2">
+                <span class="bg-white/25 px-3 py-1 rounded-full shadow-inner">⭐ <span id="score-display">0</span>分</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="bg-white/25 px-3 py-1 rounded-full shadow-inner">🔥 連擊 <span id="combo-display">0</span></span>
+            </div>
+            <button onclick="toggleAudio()" id="sound-btn" class="bg-white/25 w-10 h-10 rounded-full flex items-center justify-center cartoon-btn text-xl">🔊</button>
+        </header>
+
+        <!-- 畫面一：主視覺開始選單 -->
+        <section id="screen-menu" class="flex-1 flex flex-col items-center justify-center p-6 text-center bg-gradient-to-b from-blue-50 to-indigo-50 relative">
+            <!-- 店鋪招牌插畫 -->
+            <div class="mb-4 pop-in">
+                <div class="w-36 h-36 mx-auto bg-amber-100 rounded-full border-4 border-white shadow-xl flex items-center justify-center relative">
+                    <span class="text-7xl">🐶</span>
+                    <div class="absolute -bottom-2 bg-indigo-500 text-white text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider border-2 border-white shadow">數量比較專家</div>
+                </div>
+            </div>
+
+            <h1 class="text-3xl sm:text-4xl font-black text-indigo-600 mb-2 drop-shadow-sm">我的小食店 🍡</h1>
+            <p class="text-gray-600 text-sm sm:text-base mb-8 font-medium">比一比，誰多誰少？輕鬆學習 1-5 數量大小！</p>
+
+            <div class="w-full space-y-3">
+                <button onclick="startGame()" class="w-full py-4 bg-gradient-to-r from-emerald-400 to-teal-500 text-white font-black text-2xl rounded-2xl cartoon-btn shadow-lg hover:opacity-95 flex items-center justify-center gap-2">
+                    <span>🚀 開始營業！</span>
+                </button>
+                <button onclick="showLeaderboard()" class="w-full py-3 bg-gradient-to-r from-amber-400 to-orange-400 text-white font-black text-lg rounded-2xl cartoon-btn shadow hover:opacity-95 flex items-center justify-center gap-2">
+                    <span>🏆 英雄排行榜</span>
+                </button>
+            </div>
+
+            <div class="mt-8 text-xs text-gray-400 font-medium">
+                💡 幼兒直觀數學啟蒙 · 支援手機與平板
+            </div>
+        </section>
+
+        <!-- 畫面二：遊戲主畫面 (數量比較) -->
+        <section id="screen-game" class="hidden flex-1 flex flex-col justify-between p-4 bg-gradient-to-b from-sky-50 to-indigo-50 relative">
+            
+            <!-- 關卡進度條 -->
+            <div class="w-full bg-white/80 h-4 rounded-full overflow-hidden border-2 border-white shadow-inner mb-2">
+                <div id="progress-bar" class="bg-gradient-to-r from-indigo-400 to-pink-400 h-full w-0 transition-all duration-300 rounded-full"></div>
+            </div>
+
+            <!-- AI 隨機事件提示橫幅 -->
+            <div id="event-banner" class="hidden bg-amber-100 border-2 border-amber-300 text-amber-800 text-xs sm:text-sm font-bold px-3 py-1.5 rounded-xl text-center mb-2 animate-bounce">
+                ✨ 隨機事件：獲得雙倍積分時間！
+            </div>
+
+            <!-- 客人出題區 -->
+            <div class="flex items-center gap-3 bg-white/90 border-4 border-indigo-200 rounded-3xl p-3 shadow-md my-2 pop-in">
+                <div id="customer-avatar" class="text-5xl sm:text-6xl filter drop-shadow">🐰</div>
+                <div class="flex-1">
+                    <div id="customer-name" class="text-xs font-bold text-indigo-500">小兔兔問：</div>
+                    <div id="question-text" class="text-sm sm:text-base font-black text-gray-800 leading-snug">
+                        請找出「比較多」食物的盤子！
+                    </div>
+                </div>
+            </div>
+
+            <!-- 比較盤子選項區 (2到3個盤子供選擇) -->
+            <div id="plates-container" class="grid grid-cols-2 gap-3 my-auto py-2">
+                <!-- 動態生成比較的盤子 -->
+            </div>
+
+            <!-- 底部提示或控制區 -->
+            <div class="text-center text-xs text-gray-400 font-medium mt-2">
+                點擊你認為正確的盤子來回答！
+            </div>
+        </section>
+
+        <!-- 畫面三：遊戲結算排行榜畫面 -->
+        <section id="screen-leaderboard" class="hidden flex-1 flex flex-col p-6 bg-gradient-to-b from-amber-50 to-indigo-50 overflow-y-auto">
+            <div class="text-center my-4">
+                <div class="text-5xl mb-2">🎉</div>
+                <h2 class="text-3xl font-black text-indigo-800">營業結算報告</h2>
+                <p class="text-gray-600 text-sm mt-1">今天的小食店大成功！</p>
+            </div>
+
+            <!-- 分數卡片 -->
+            <div class="bg-white border-4 border-indigo-200 rounded-3xl p-5 shadow-md mb-6 text-center">
+                <div class="text-gray-500 text-sm font-bold">最終得分</div>
+                <div id="final-score" class="text-5xl font-black text-indigo-600 my-2">0</div>
+                <div id="final-stars" class="text-2xl text-yellow-500 my-1">⭐⭐⭐</div>
+                <div class="text-xs text-gray-400 mt-2">最高紀錄：<span id="best-score">0</span> 分</div>
+            </div>
+
+            <!-- 排行榜清單 -->
+            <div class="bg-white/80 border-2 border-indigo-200 rounded-2xl p-4 mb-6 shadow-sm">
+                <h3 class="font-bold text-gray-700 text-sm mb-3 flex items-center gap-1">
+                    <span>📋</span> 歷史英雄榜 (Top 5)
+                </h3>
+                <div id="leaderboard-list" class="space-y-2">
+                    <!-- 動態填入排行榜 -->
+                </div>
+            </div>
+
+            <!-- 操作按鈕 -->
+            <div class="space-y-3 mt-auto">
+                <button onclick="returnToMenu()" class="w-full py-3 bg-gradient-to-r from-indigo-400 to-blue-500 text-white font-black text-lg rounded-2xl cartoon-btn shadow hover:opacity-95">
+                    🏠 回到主選單
+                </button>
+                <button onclick="startGame()" class="w-full py-3 bg-gradient-to-r from-emerald-400 to-teal-500 text-white font-black text-lg rounded-2xl cartoon-btn shadow hover:opacity-95">
+                    🔄 再玩一次
+                </button>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- 自定義訊息彈窗 (取代 alert) -->
+    <div id="custom-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white border-4 border-indigo-300 rounded-3xl p-6 max-w-xs w-full text-center shadow-2xl pop-in">
+            <div id="modal-icon" class="text-5xl mb-3">🎉</div>
+            <h3 id="modal-title" class="text-xl font-black text-gray-800 mb-1">太棒了！</h3>
+            <p id="modal-message" class="text-gray-600 text-sm mb-5">答對囉！獲得獎勵！</p>
+            <button onclick="closeModal()" class="w-full py-3 bg-indigo-500 text-white font-bold rounded-xl cartoon-btn shadow">
+                確定
+            </button>
+        </div>
+    </div>
+
+    <!-- JavaScript 遊戲核心邏輯 -->
+    <script>
+        // --- 遊戲狀態變數 ---
+        let score = 0;
+        let combo = 0;
+        let bestScore = 0;
+        let currentRound = 1;
+        let maxRounds = 5;
+        let soundEnabled = true;
+        let activeEvent = null;
+        let currentQuestion = null; // 當前題目物件
+
+        // 食物素材清單
+        const foodTypes = [
+            { id: 'cupcake', name: '杯子蛋糕', emoji: '🧁' },
+            { id: 'donut', name: '甜甜圈', emoji: '🍩' },
+            { id: 'cookie', name: '餅乾', emoji: '🍪' },
+            { id: 'candy', name: '糖果', emoji: '🍬' },
+            { id: 'icecream', name: '冰淇淋', emoji: '🍦' }
+        ];
+
+        // 客人角色清單
+        const customers = [
+            { name: '小兔兔', emoji: '🐰' },
+            { name: '小熊貓', emoji: '🐼' },
+            { name: '小狐狸', emoji: '🦊' },
+            { name: '小老虎', emoji: '🐯' },
+            { name: '小豬豬', emoji: '🐷' }
+        ];
+
+        // AI 隨機事件池
+        const aiEvents = [
+            { type: 'double', title: '✨ 雙倍金幣日！積分加倍！', desc: '本局獲得點數 x2' },
+            { type: 'lucky', title: '🍀 幸運加持！連擊點數加分！', desc: '連擊獎勵雙倍' }
+        ];
+
+        // 初始化 LocalStorage 讀取最高分
+        function initStorage() {
+            const saved = localStorage.getItem('snack_shop_compare_best');
+            if (saved) {
+                bestScore = parseInt(saved, 10);
+            }
+        }
+
+        // --- Web Audio API 音效生成器 (無外部依賴) ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'click') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(440, now);
+                osc.frequency.exponentialRampToValueAtTime(660, now + 0.1);
+                gainNode.gain.setValueAtTime(0.1, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now);
+                osc.stop(now + 0.1);
+            } else if (type === 'correct') {
+                // 愉悅的和弦上升音
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(523.25, now); // C5
+                osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
+                osc.frequency.setValueAtTime(783.99, now + 0.16); // G5
+                gainNode.gain.setValueAtTime(0.15, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                osc.start(now);
+                osc.stop(now + 0.3);
+            } else if (type === 'wrong') {
+                // 低沉錯誤音
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(220, now);
+                osc.frequency.linearRampToValueAtTime(140, now + 0.2);
+                gainNode.gain.setValueAtTime(0.15, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                osc.start(now);
+                osc.stop(now + 0.2);
+            }
+        }
+
+        function toggleAudio() {
+            soundEnabled = !soundEnabled;
+            document.getElementById('sound-btn').innerText = soundEnabled ? '🔊' : '🔇';
+        }
+
+        // --- 畫面切換控制 ---
+        function showScreen(screenId) {
+            ['screen-menu', 'screen-game', 'screen-leaderboard'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            document.getElementById(screenId).classList.remove('hidden');
+            
+            if (screenId === 'screen-game') {
+                document.getElementById('top-bar').classList.remove('hidden');
+            } else {
+                document.getElementById('top-bar').classList.add('hidden');
+            }
+        }
+
+        // --- 遊戲主流程 ---
+        function startGame() {
+            playSound('click');
+            score = 0;
+            combo = 0;
+            currentRound = 1;
+            initStorage();
+            updateTopBar();
+            showScreen('screen-game');
+            triggerRandomEvent();
+            loadNewRound();
+        }
+
+        // AI 隨機事件產生器
+        function triggerRandomEvent() {
+            const banner = document.getElementById('event-banner');
+            if (Math.random() < 0.5) {
+                activeEvent = aiEvents[Math.floor(Math.random() * aiEvents.length)];
+                banner.innerText = activeEvent.title;
+                banner.classList.remove('hidden');
+            } else {
+                activeEvent = null;
+                banner.classList.add('hidden');
+            }
+        }
+
+        // 產生「數量比較」題目 (1-5 範圍)
+        function loadNewRound() {
+            // 更新進度條
+            const progress = ((currentRound - 1) / maxRounds) * 100;
+            document.getElementById('progress-bar').style.width = `${progress}%`;
+
+            // 隨機客人
+            const customer = customers[Math.floor(Math.random() * customers.length)];
+            document.getElementById('customer-avatar').innerText = customer.emoji;
+            document.getElementById('customer-name').innerText = `${customer.name} 出題：`;
+
+            // 隨機選定比較題型
+            // 0: 找比較多的盤子 (More)
+            // 1: 找比較少的盤子 (Less)
+            // 2: 找指定數量的盤子 / 找出一樣多的盤子
+            const questionTypes = ['more', 'less', 'equal'];
+            const qType = questionTypes[Math.floor(Math.random() * questionTypes.length)];
+
+            // 隨機選一種食物
+            const food = foodTypes[Math.floor(Math.random() * foodTypes.length)];
+
+            // 產生 2 或 3 個盤子的數量 (1 到 5 之間)
+            let countA = Math.floor(Math.random() * 5) + 1;
+            let countB = Math.floor(Math.random() * 5) + 1;
+            // 確保數量不完全相同（除非題型需要）
+            while (countA === countB) {
+                countB = Math.floor(Math.random() * 5) + 1;
+            }
+
+            let plates = [
+                { count: countA, food: food },
+                { count: countB, food: food }
+            ];
+
+            // 根據題型設定文字與正確解答條件
+            let promptText = '';
+            let targetIndex = 0;
+
+            if (qType === 'more') {
+                targetIndex = countA > countB ? 0 : 1;
+                promptText = `哪一個盤子的${food.name}「比較多」？`;
+            } else if (qType === 'less') {
+                targetIndex = countA < countB ? 0 : 1;
+                promptText = `哪一個盤子的${food.name}「比較少」？`;
+            } else {
+                // 等於或隨機挑一個當目標
+                targetIndex = 0;
+                promptText = `請找出有 ${countA} 個${food.name}的盤子！`;
+            }
+
+            currentQuestion = {
+                targetIndex: targetIndex,
+                plates: plates
+            };
+
+            document.getElementById('question-text').innerText = promptText;
+            renderPlates(plates);
+        }
+
+        // 渲染比較盤子選項
+        function renderPlates(plates) {
+            const container = document.getElementById('plates-container');
+            container.innerHTML = '';
+
+            plates.forEach((plate, index) => {
+                // 產生食物 Emoji 字串
+                let foodStr = '';
+                for (let i = 0; i < plate.count; i++) {
+                    foodStr += plate.food.emoji + ' ';
+                }
+
+                const btn = document.createElement('button');
+                btn.className = 'bg-white border-4 border-indigo-200 rounded-3xl p-4 flex flex-col items-center justify-center plate-hover cartoon-btn shadow-md cursor-pointer transition-transform';
+                btn.onclick = () => checkAnswer(index);
+                btn.innerHTML = `
+                    <div class="text-xs font-bold text-indigo-400 mb-2 bg-indigo-50 px-3 py-0.5 rounded-full">盤子 ${index + 1}</div>
+                    <div class="text-2xl sm:text-3xl tracking-widest my-2 text-center min-h-[40px] flex items-center justify-center flex-wrap max-w-[140px]">${foodStr}</div>
+                    <div class="text-sm font-black text-gray-700 bg-amber-100 px-3 py-1 rounded-full mt-1">數量：${plate.count}</div>
+                `;
+                container.appendChild(btn);
+            });
+        }
+
+        // 檢查玩家選擇是否正確
+        function checkAnswer(selectedIndex) {
+            const isCorrect = (selectedIndex === currentQuestion.targetIndex);
+
+            if (isCorrect) {
+                playSound('correct');
+                combo++;
+                let roundScore = 15;
+                if (activeEvent && activeEvent.type === 'double') roundScore *= 2;
+                if (activeEvent && activeEvent.type === 'lucky') combo += 1;
+
+                score += roundScore + (combo * 3);
+                updateTopBar();
+
+                showModal('🎉 太棒了！', `答對囉！獲得 ${roundScore} 分 (連擊 x${combo})`, '🌟');
+
+                setTimeout(() => {
+                    closeModal();
+                    currentRound++;
+                    if (currentRound > maxRounds) {
+                        endGame();
+                    } else {
+                        loadNewRound();
+                    }
+                }, 1200);
+            } else {
+                playSound('wrong');
+                combo = 0;
+                updateTopBar();
+                
+                // 加上輕微抖動視覺
+                const container = document.getElementById('plates-container');
+                container.classList.add('shake-anim');
+                setTimeout(() => container.classList.remove('shake-anim'), 400);
+
+                showModal('💪 加油！', '選錯囉！再仔細數一數數量！', '🎈');
+                setTimeout(() => {
+                    closeModal();
+                }, 1200);
+            }
+        }
+
+        function updateTopBar() {
+            document.getElementById('score-display').innerText = score;
+            document.getElementById('combo-display').innerText = combo;
+        }
+
+        // --- 結算與排行榜功能 ---
+        function endGame() {
+            showScreen('screen-leaderboard');
+            document.getElementById('final-score').innerText = score;
+
+            // 星星評價
+            let stars = '⭐⭐⭐';
+            if (score < 50) stars = '⭐';
+            else if (score < 90) stars = '⭐⭐';
+            document.getElementById('final-stars').innerText = stars;
+
+            // 更新最高分與存檔
+            if (score > bestScore) {
+                bestScore = score;
+                localStorage.setItem('snack_shop_compare_best', bestScore);
+            }
+            document.getElementById('best-score').innerText = bestScore;
+
+            saveToLeaderboard(score);
+            renderLeaderboard();
+        }
+
+        function saveToLeaderboard(newScore) {
+            let list = JSON.parse(localStorage.getItem('snack_shop_compare_list') || '[]');
+            list.push({ score: newScore, date: new Date().toLocaleDateString() });
+            list.sort((a, b) => b.score - a.score);
+            list = list.slice(0, 5); // 取前五名
+            localStorage.setItem('snack_shop_compare_list', JSON.stringify(list));
+        }
+
+        function renderLeaderboard() {
+            const listContainer = document.getElementById('leaderboard-list');
+            let list = JSON.parse(localStorage.getItem('snack_shop_compare_list') || '[]');
+            
+            if (list.length === 0) {
+                listContainer.innerHTML = '<div class="text-center text-xs text-gray-400">尚無紀錄</div>';
+                return;
+            }
+
+            listContainer.innerHTML = '';
+            list.forEach((item, index) => {
+                const row = document.createElement('div');
+                row.className = 'flex justify-between items-center bg-white px-3 py-2 rounded-xl text-sm font-bold shadow-xs';
+                row.innerHTML = `
+                    <span class="flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs">#${index + 1}</span>
+                        <span class="text-gray-700">${item.date}</span>
+                    </span>
+                    <span class="text-indigo-600">${item.score} 分</span>
+                `;
+                listContainer.appendChild(row);
+            });
+        }
+
+        function showLeaderboard() {
+            playSound('click');
+            showScreen('screen-leaderboard');
+            renderLeaderboard();
+        }
+
+        function returnToMenu() {
+            playSound('click');
+            showScreen('screen-menu');
+        }
+
+        // --- 自定義彈窗控制 ---
+        function showModal(title, message, icon) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-message').innerText = message;
+            document.getElementById('modal-icon').innerText = icon;
+            document.getElementById('custom-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('custom-modal').classList.add('hidden');
+        }
+
+        // 初始化執行
+        window.onload = function() {
+            initStorage();
+            showScreen('screen-menu');
+        };
+    </script>
+</body>
+</html>
